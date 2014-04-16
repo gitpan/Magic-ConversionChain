@@ -12,11 +12,11 @@ Magic::ConversionChain - Create permanent conversion chains
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -28,7 +28,7 @@ Here is a code snippet for converting a standard number into an equivlent that w
 
    use Magic::ConversionChain;
 
-   my $padTest = Convert::Permanent->new({
+   my $n2h = Convert::Permanent->new({
     conversion => [ qw( i32s hex ) ],
    });
 
@@ -38,7 +38,7 @@ Here is a code snippet for converting a standard number into an equivlent that w
 
 I will continue expanding this module including sha, md5 and the entire of pack's data types usable in what I class to be a far more friendly way.
 
-=head1 SUBROUTINES/METHODS
+=head1 Callable functions
 
 =head2 new
 
@@ -119,25 +119,17 @@ sub proc {
   $cmd = $1;
   @args = split(/,/,$2);
  }
-  
+
  $proc = &{ $self->cmddat($cmd,'sub') }($self,$data,@args);
 
  return $self->output($proc);
 # warn "Convert to: $newdata";
 }
 
-=head2 input
 
-Configure an input filter for the object, if left unset it will be assumed the object is an 'input' for the conversion chain, you will be able to submit data for conversion via:
+=head1 Conversion filters
 
- $conv->proc($data);
-
-=cut 
-
-sub input {
- my $self = shift;
- my $data = shift;
-}
+Usable in new in formation of a conversion chain.
 
 =head2 i32s
 
@@ -182,22 +174,6 @@ sub i32u_bigendian {
  my $data = shift;
 
  return pack('N',$data);
-}
-
-
-=head2 output 
-
-=cut 
-
-sub output {
- my $self = shift;
- my $data = shift;
-
- if ( ref($self->{config}->{output}) eq 'Magic::ConversionChain' ) {
-  return $self->{config}->{output}->proc($data);
- }
-
- return $data;  
 }
 
 =head1 Internal conversion methods
@@ -286,6 +262,32 @@ sub truncate_left {
 =head1 Internal callable functions
 
 These are used internally by the module, do not call them directly unless you have a very good reason!
+
+=head2 input
+
+Tell the object what it can expect on its input, this is very rarely required or used.
+
+=cut
+
+sub input {}
+
+=head2 output
+
+Send data through the output chain or return if the last object in the chain.
+
+=cut
+
+sub output {
+ my $self = shift;
+ my $data = shift;
+
+ if ( ref($self->{config}->{output}) eq 'Magic::ConversionChain' ) {
+  return $self->{config}->{output}->proc($data);
+ }
+
+ return $data;
+}
+
 
 =head2 cmddat 
 
