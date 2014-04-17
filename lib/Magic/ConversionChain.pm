@@ -4,7 +4,11 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
+# For the developers debugging - will be removed in later versions
 use Data::Dumper;
+
+# Additional conversions
+use Digest::SHA qw(sha1 sha224 sha256 sha384 sha512 sha512224 sha512256);
 
 =head1 NAME
 
@@ -12,11 +16,11 @@ Magic::ConversionChain - Create permanent conversion chains
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 SYNOPSIS
 
@@ -28,9 +32,7 @@ Here is a code snippet for converting a standard number into an equivlent that w
 
    use Magic::ConversionChain;
 
-   my $n2h = Convert::Permanent->new({
-    conversion => [ qw( i32s hex ) ],
-   });
+   my $n2h = Magic::ConversionChain->new(qw( i32s hex ));
 
    my $result = $n2h->proc('34243');
 
@@ -44,22 +46,33 @@ I will continue expanding this module including sha, md5 and the entire of pack'
 
 Create a new basic object.
 
+ my $sha2hex = Magic::ConversionChain->new(qw( sha256 hex ));
+
 =cut
 
 sub new {
  my $class = shift;
- my $conv = shift;
+ my $conv = [@_];
 
- if ( (!$conv) || (ref($conv) ne 'HASH') ) { $conv = { input => '', conversion => [], output => '' } };
-
- if (!$conv->{input}) { $conv->{input} = '' }
- if (!$conv->{output}) { $conv->{output} = '' }
- if (!$conv->{conversion}) { $conv->{conversion} = [] }
-
- if (! ref($conv->{conversion}) ) {
-  # Singular conversion or last in chain, convert into an ARRAY
-  $conv->{conversion} = [$conv->{conversion}];
+ if (scalar(@{ $conv }) == 0) { 
+  # Passed a blank new() make a template
+  $conv->[0] = { input => 'ascii', conversion => [], output => 'ascii' };
  }
+ elsif (scalar(@{ $conv }) > 0) {
+  if (ref($conv->[0]) eq 'HASH') {
+   # Ok passed full struct
+   $conv = $conv->[0];
+  } else {
+   # Ok a conversion chain list
+   $conv = { input => 'ascii', conversion => $conv, output => 'ascii' };
+  }
+ } 
+
+# warn Dumper($conv);
+
+ if (!$conv->{input}) { $conv->{input} = 'ascii' }
+ if (!$conv->{output}) { $conv->{output} = 'ascii' }
+ if (!$conv->{conversion}) { $conv->{conversion} = [] }
 
  my $self = {
   config => {
@@ -89,7 +102,7 @@ sub new {
    $self->{config}->{output} = Magic::ConversionChain->new({ 
     input => $self->{config}->{datatype}, 
     conversion => $conv->{conversion}, 
-    output => $conv->{output} 
+    output => $conv->{output}
    });
   } else {
    $self->{config}->{output} = $self->{config}->{datatype};
@@ -120,7 +133,11 @@ sub proc {
   @args = split(/,/,$2);
  }
 
- $proc = &{ $self->cmddat($cmd,'sub') }($self,$data,@args);
+ if ($self->cmddat($cmd,'ext')) {
+  $proc = &{ $self->cmddat($cmd,'sub') }($data,@args);
+ } else {
+  $proc = &{ $self->cmddat($cmd,'sub') }($self,$data,@args);
+ }
 
  return $self->output($proc);
 # warn "Convert to: $newdata";
@@ -130,6 +147,36 @@ sub proc {
 =head1 Conversion filters
 
 Usable in new in formation of a conversion chain.
+
+=head2 i64u
+
+Convert an object into the equivalent of an unsigned int64.
+
+Requires: 1 argument
+
+=cut
+
+sub i64u {
+ my $self = shift;
+ my $data = shift;
+
+ return pack('Q',$data);
+}
+
+=head2 i64s
+
+Convert an object into the equivalent of an signed int64.
+
+Requires: 1 argument
+
+=cut
+
+sub i64s {
+ my $self = shift;
+ my $data = shift;
+
+ return pack('q',$data);
+}
 
 =head2 i32s
 
@@ -161,26 +208,11 @@ sub i32u {
  return pack('V',$data);
 }
 
-=head2 i32u_bigendian
-
-Convert an object into the equivalent of an unsigned int32 (Big Endian).
-
-Requires: 1 argument
-
-=cut
-
-sub i32u_bigendian {
- my $self = shift;
- my $data = shift;
-
- return pack('N',$data);
-}
-
-=head1 Internal conversion methods
-
 =head2 hex 
 
 Convert data into hex.
+
+Requires: 0 arguments
 
 =cut
 
@@ -324,6 +356,14 @@ sub cmddat {
    sub => \&hex,
    type => 'hex',
   },
+  i64s => {
+   sub => \&i64s,
+   type => 'bytes'
+  },
+  i64u => {
+   sub => \&i64u,
+   type => 'bytes',
+  },
   i32s => {
    sub => \&i32s,
    type => 'bytes'
@@ -332,9 +372,40 @@ sub cmddat {
    sub => \&i32u,
    type => 'bytes',
   },
-  i32u_bigendian => {
-   sub => \&i32u_bigendian,
+  sha1 => {
+   sub => \&sha1,
    type => 'bytes',
+   ext => 1,
+  },
+  sha224 => {
+   sub => \&sha224,
+   type => 'bytes',
+   ext => 1,
+  },
+  sha256 => {
+   sub => \&sha256,
+   type => 'bytes',
+   ext => 1,
+  },
+  sha384 => {
+   sub => \&sha384,
+   type => 'bytes',
+   ext => 1,
+  },
+  sha512 => {
+   sub => \&sha512,
+   type => 'bytes',
+   ext => 1,
+  },
+  sha512224 => {
+   sub => \&sha512224,
+   type => 'bytes',
+   ext => 1,
+  },
+  sha512256 => {
+   sub => \&sha512256,
+   type => 'bytes',
+   ext => 1,
   },
  };
 
@@ -354,9 +425,6 @@ Paul G Webster, C<< <daemon at cpan.org> >>
 Please report any bugs or feature requests to C<bug-convert-permanent at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Convert-Permanent>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
-
-
-
 
 =head1 SUPPORT
 

@@ -6,3 +6,16 @@ Revision history for Magic-ConversionChain
 0.02	Updated POD
 	Minor documentation alterations, re ordered for clarity.
 	Updated Synopsis to correct mistake.
+
+0.03	Updated conversion filters.
+	Added: 64bit signed.
+	Added: 64bit unsigned.
+	Removed: i32u_bigendian.
+	Added: sha1.
+	Added: sha224.
+	Added: sha256.
+	Added: sha384.
+	Added: sha512.
+	Added: sha512224.
+	Added: sha1512256.
+	Modified: Argument processing for new, old method still acceptable though!
